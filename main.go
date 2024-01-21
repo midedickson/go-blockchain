@@ -13,6 +13,8 @@ import (
 	"github.com/opensaucerer/barf"
 )
 
+// Block represenrs the individual block on the blockchain
+// it holds the checkout data, position, timestamp, hash, and prevhash
 type Block struct {
 	Pos       int
 	Data      BookCheckout
@@ -22,6 +24,7 @@ type Block struct {
 }
 
 func (b *Block) generateHash() {
+	// method to generate block hash based on the checkout data sttacched to the block
 	bytes, _ := json.Marshal(b.Data)
 	data := string(rune(b.Pos)) + b.TimeStamp + string(bytes) + b.PrevHash
 
@@ -29,6 +32,7 @@ func (b *Block) generateHash() {
 	b.Hash = hex.EncodeToString(hash.Sum([]byte(data)))
 }
 
+// Book represents the item to be checked out
 type Book struct {
 	ID          string `json:"id"`
 	Title       string `json:"title"`
@@ -37,6 +41,7 @@ type Book struct {
 	ISBN        string `json:"isbn"`
 }
 
+// BookCheckout represents the data of a Book to be checked out
 type BookCheckout struct {
 	BookID       string `json:"book_id"`
 	User         string `json:"user"`
@@ -44,11 +49,13 @@ type BookCheckout struct {
 	IsGenesis    bool   `json:"is_genesis"`
 }
 
+// BlockChain represents the core blockchain implementation
 type BlockChain struct {
 	blocks []*Block
 }
 
 func (bc *BlockChain) AddBlock(data BookCheckout) {
+	// method to add a block to the array of block chains
 	lastBlock := bc.blocks[len(bc.blocks)-1]
 
 	block := CreateBlock(lastBlock, data)
@@ -60,24 +67,13 @@ func (bc *BlockChain) AddBlock(data BookCheckout) {
 
 var MyBlockChain *BlockChain
 
-func GenesisBlock() *Block {
-	return CreateBlock(&Block{}, BookCheckout{IsGenesis: true})
-}
-
-func (b *Block) validateHash(hash string) bool {
-	b.generateHash()
-	return b.Hash != hash
-}
-
-func NewBlockChain() *BlockChain {
-	return &BlockChain{[]*Block{GenesisBlock()}}
-}
-
 func CreateBlock(prevBlock *Block, data BookCheckout) *Block {
+	// function to create a new block
 	block := &Block{}
 
 	block.Pos = prevBlock.Pos + 1
 	block.TimeStamp = time.Now().String()
+	block.Data = data
 	block.PrevHash = prevBlock.Hash
 	block.generateHash()
 
@@ -85,7 +81,7 @@ func CreateBlock(prevBlock *Block, data BookCheckout) *Block {
 }
 
 func validBlock(block, prevBlock *Block) bool {
-	if prevBlock.Hash != block.Hash {
+	if prevBlock.Hash != block.PrevHash {
 		return false
 	}
 
@@ -98,6 +94,20 @@ func validBlock(block, prevBlock *Block) bool {
 	}
 
 	return true
+}
+
+func GenesisBlock() *Block {
+	// creates the Genesis block in the block chain
+	return CreateBlock(&Block{}, BookCheckout{IsGenesis: true})
+}
+
+func (b *Block) validateHash(hash string) bool {
+	b.generateHash()
+	return b.Hash == hash
+}
+
+func NewBlockChain() *BlockChain {
+	return &BlockChain{[]*Block{GenesisBlock()}}
 }
 
 func newBook(w http.ResponseWriter, r *http.Request) {
@@ -169,7 +179,7 @@ func writeBlock(w http.ResponseWriter, r *http.Request) {
 
 	barf.Response(w).Status(http.StatusOK).JSON(barf.Res{
 		Status:  true,
-		Data:    resp,
+		Data:    string(resp),
 		Message: "New Block Created",
 	})
 
