@@ -32,6 +32,11 @@ func (b *Block) generateHash() {
 	b.Hash = hex.EncodeToString(hash.Sum([]byte(data)))
 }
 
+func (b *Block) validateHash(hash string) bool {
+	b.generateHash()
+	return b.Hash == hash
+}
+
 // Book represents the item to be checked out
 type Book struct {
 	ID          string `json:"id"`
@@ -71,7 +76,12 @@ func CreateBlock(prevBlock *Block, data BookCheckout) *Block {
 	// function to create a new block
 	block := &Block{}
 
-	block.Pos = prevBlock.Pos + 1
+	if data.IsGenesis {
+		block.Pos = 0
+	} else {
+		block.Pos = prevBlock.Pos + 1
+	}
+
 	block.TimeStamp = time.Now().String()
 	block.Data = data
 	block.PrevHash = prevBlock.Hash
@@ -99,11 +109,6 @@ func validBlock(block, prevBlock *Block) bool {
 func GenesisBlock() *Block {
 	// creates the Genesis block in the block chain
 	return CreateBlock(&Block{}, BookCheckout{IsGenesis: true})
-}
-
-func (b *Block) validateHash(hash string) bool {
-	b.generateHash()
-	return b.Hash == hash
 }
 
 func NewBlockChain() *BlockChain {
@@ -192,7 +197,6 @@ func main() {
 	barf.Get("/", getBlockChain)
 	barf.Post("/", writeBlock)
 	barf.Post("/new", newBook)
-
 	go func() {
 		for _, block := range MyBlockChain.blocks {
 			fmt.Printf("Prev. Hash: %x\n", block.PrevHash)
@@ -207,4 +211,5 @@ func main() {
 	if err := barf.Beck(); err != nil {
 		barf.Logger().Error(err.Error())
 	}
+
 }
